@@ -4,6 +4,7 @@ const cors = require('cors')
 const admin = require('firebase-admin');
 
 const serviceAccount = require('./maps-94346c6d6ab7.json');
+const { exit } = require('process');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -37,16 +38,21 @@ const people = new Map();
 // const default_people = [];
 // for (let i = 0; i < 100; i++) {
 //   const person = {
+//     hash: Math.random().toString(),
 //     name: generate_name()+" "+generate_name(),
-//     home_lat: (Math.random()/5-0.5)+32.8686,
-//     home_lng: (Math.random()/5-0.5)-116.9728,
-//     depart_time: 1,
-//     work_lat: (Math.random()/5-0.5)+32.8686,
-//     work_lng: (Math.random()/5-0.5)-116.9728,
-//     return_time: 2,
-//     perferece: Math.round(Math.random()*2-1),
+//     password: Math.random().toString(),
+//     home_lat: (Math.random()-0.5)/5+32.8800604,
+//     home_lng: (Math.random()-0.5)/5-117.2340135,
+//     depart_time: Math.floor(Math.random()*12)+":"+Math.floor(Math.random()*60),
+//     work_lat: (Math.random()-0.5)/5+32.8800604,
+//     work_lng: (Math.random()-0.5)/5-117.2340135,
+//     return_time: (Math.floor(Math.random()*12)+12)+":"+Math.floor(Math.random()*60),
+//     preferece: Math.round(Math.random()*2-1),
 //     radius: Math.random()*10,
+//     paired: false,
+//     match: null,
 //   };
+//   console.log(person);
 //   default_people.push(person);
 // }
 
@@ -84,7 +90,7 @@ function compose_response(name) {
   const rad = user.radius;
   const list = [];
   people.forEach((person) => {
-    // if (person.name === name) return;
+    if (person.name === name) return;
     const home_lat2 = person.home_lat;
     const home_lng2 = person.home_lng;
     const work_lat2 = person.work_lat;
@@ -102,28 +108,48 @@ function compose_response(name) {
 populate_people(); // initialize database
 app.post('/', (request, response) => {
   const name = request.body.name;
-  const home_lat = request.body.home_lat;
-  const work_lat = request.body.work_lat;
-  
-  if (home_lat == null || work_lat == null) {
-    response.send([]);
-    console.log("null");
-    return;
-  }
+  let same = false;
   if (people.get(name)) {
-    if (home_lat == people.get(name).home_lat && work_lat == people.get(name).work_lat) {
-      response.send([]);
-      console.log("same");
-      return;
+    same = true
+    for (let key in request.body) {
+      if (request.body[key] !== people.get(name)[key]) {
+        same = false;
+        break;
+      }
     }
   }
+  if (!same) {
+    people.set(name, request.body);
+    const docRef = colRef.doc(name);
+    docRef.set(request.body);
+  }
 
-  console.log(name, home_lat, work_lat);
+  // console.log(name, home_lat, work_lat);
   // console.log(people.get(name));
-  people.set(name, request.body);
-  const docRef = colRef.doc(name);
-  docRef.set(request.body);
 
-  console.log(compose_response(name));
+  //console.log(compose_response(name));
   response.send(compose_response(name));
+});
+
+app.get('/pair', (request, response) => {
+  const from = request.query.from;
+  const to = request.query.to;
+  //console.log(from, to);
+  if (people.get(to).paired == false) {
+    people.get(to).paired = true;
+    people.get(to).match = from;
+    people.get(from).paired = true;
+    people.get(from).match = to;
+    let docRef = colRef.doc(from);
+    docRef.set(people.get(from));
+    docRef = colRef.doc(to);
+    docRef.set(people.get(to));
+  }
+  response.send(people.get(from));
+});
+
+app.get('/fetch', (request, response) => {
+  const user = request.query.user;
+  response.send(people.get(user));
+  console.log(user, people.get(user));
 });
