@@ -3,8 +3,7 @@ const cors = require('cors')
 
 const admin = require('firebase-admin');
 
-const serviceAccount = require('./maps-94346c6d6ab7.json');
-const { exit } = require('process');
+const serviceAccount = require('./.key.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -140,6 +139,8 @@ app.get('/pair', (request, response) => {
     people.get(to).match = from;
     people.get(from).paired = true;
     people.get(from).match = to;
+    console.log(people.get(from));
+    console.log(people.get(to));
     let docRef = colRef.doc(from);
     docRef.set(people.get(from));
     docRef = colRef.doc(to);
@@ -148,8 +149,15 @@ app.get('/pair', (request, response) => {
   response.send(people.get(from));
 });
 
-app.get('/fetch', (request, response) => {
+app.get('/login', (request, response) => {
   const user = request.query.user;
-  response.send(people.get(user));
-  console.log(user, people.get(user));
+  const pass = request.query.pass;
+  if (people.get(user)) {
+    if (people.get(user).password === pass) {
+      response.send(people.get(user));
+      console.log(user, people.get(user));
+      return;
+    }
+  }
+  response.end();  
 });
