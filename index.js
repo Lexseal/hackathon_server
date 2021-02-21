@@ -131,22 +131,23 @@ app.post('/', (request, response) => {
 });
 
 app.get('/pair', (request, response) => {
-  const from = request.query.from;
-  const to = request.query.to;
-  //console.log(from, to);
-  if (people.get(to).paired == false) {
-    people.get(to).paired = true;
-    people.get(to).match = from;
-    people.get(from).paired = true;
-    people.get(from).match = to;
-    console.log(people.get(from));
-    console.log(people.get(to));
-    let docRef = colRef.doc(from);
-    docRef.set(people.get(from));
-    docRef = colRef.doc(to);
-    docRef.set(people.get(to));
+  const from = people.get(request.query.from);
+  const to = people.get(request.query.to);
+  if (to.paired == false) {
+    to.paired = true;
+    to.match = from.name;
+    from.paired = true;
+    from.match = to.name;
+    let docRef = colRef.doc(from.name);
+    docRef.set(from);
+    people.set(from.name, from);
+    docRef = colRef.doc(to.name);
+    docRef.set(to);
+    people.set(to.name, to);
   }
   response.send(people.get(from));
+  let docRef = colRef.doc(from);
+  console.log(await docRef.get(from));
 });
 
 app.get('/login', (request, response) => {
@@ -155,7 +156,7 @@ app.get('/login', (request, response) => {
   if (people.get(user)) {
     if (people.get(user).password === pass) {
       response.send(people.get(user));
-      console.log(user, people.get(user));
+      // console.log(user, people.get(user));
       return;
     }
   }
